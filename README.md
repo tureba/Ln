@@ -28,6 +28,9 @@ the previous one, in chronological order. So for s1, s2, s3, s4...
 -	Ln s3 s4
 -	...
 
+Or in one go:
+-	Ln s1 s2 s3 s4 ...
+
 Executing it in a different order will not preserve the first creation times
 across snapshots. After that, you can rerun it skipping snapshots if you think
 there is a chance some file was changed and reverted in a future moment, but
@@ -54,14 +57,20 @@ Execution
 The script defines a function with the same name and that takes the same
 parameters. If it is called directly (./Ln a b), it executes the function,
 passing the parameters to it. If it is sourced into a shell or into another
-script (. ./Ln), it does nothing but define the function.
+script (. ./Ln), it also executes the function, but it does nothing if there
+are fewer than the 2 minimum arguments it needs. When more than two arguments
+are provided, the script will be executed sequentially for each consecutive
+pair of arguments from beginning to end.
+
+In all cases, all arguments must be of the same type - either all files or
+all directories.
 
 Tests
 -----
 
-The directories a and b are to be used as tests cases. To test, check the disk
-usage and the file attributes (reference counts and dates), as well as their
-contents, both before and after each test case:
+The directories a, b and c are to be used as tests cases. To test, check the
+disk usage and the file attributes (reference counts and dates), as well as
+their contents, both before and after each test case:
 
 1. Place a copy of them both in the same file system and execute:
 	Ln fs1/a.1 fs1/b.1
@@ -80,10 +89,16 @@ The output should say that three attempts were made to write to the
 directory, but they all failed, so not even the recovery of the backup was
 possible for file 'four'.
 
-4. Repeating the above tests shows that the end result is stable i.e,
+4. Place a copy of the three test directories in the same file system (or any
+other combination of file systems) and execute the multi target call:
+	Ln fs1/a.a fs1/b.1 fs1/c.1
+The output should be exactly the same for each run as for other tests with
+the same file system and read-only directory choices.
+
+5. Repeating the above tests shows that the end result is stable i.e,
 re-executing the script on already merged directories has no downside.
 
-5. Repeating the above steps from scratch on each file individually shows
+6. Repeating the above steps from scratch on each file individually shows
 that the script performs correctly both when the inputs are directories
 and files.
 

@@ -1,0 +1,81 @@
+#!/bin/sh
+
+# Copyright (c) 2013, Arthur Nascimento <tureba@gmail.com>
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this
+#    list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+# ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+# ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+Ln() {
+
+	# both have to be provided - they can be both directories or both files
+	old=${1:?missing the old target}
+	new=${2:?missing the new target}
+	readonly Lnbackupsuffix=.Lnbackup
+
+	# special case for recovery of target file
+	[ -f "$new$Lnbackupsuffix" ] && ( mv "$new$Lnbackupsuffix" "$new" || return )
+	find "$new" -type f | (\
+			filecount=0
+			filesize=0
+			while read filenew; do
+				# if the file is left from an interrupted previous execution of this script, restore it
+				if [ "$filenew" == "${filenew%$Lnbackupsuffix}$Lnbackupsuffix" ] ; then
+					filenew="${filenew%$Lnbackupsuffix}"
+					mv -f "$filenew$Lnbackupsuffix" "$filenew" || continue
+				fi
+
+				fileold="$old${filenew#$new}"
+				[ -f "$fileold" ] || continue
+				# from this point onwards, both filenew and fileold are definetely files
+
+				# check if they are not the same file already
+				[ $(ls -i "$filenew" | cut -f 1 -d " ") == $(ls -i "$fileold" | cut -f 1 -d " ") ] && continue
+				# check if they have the same contents
+				diff "$filenew" "$fileold" >/dev/null || continue
+
+				# since the -f flag of ln is not transactional, the next lines back up the target file to
+				# make sure we do not lose it in case the directories are in different filesystems.
+
+				# check if we have write permissions on the parent directory
+				mv "$filenew" "$filenew$Lnbackupsuffix" || continue
+
+				# if the process is interrupted in this step, the backup can be restored manually or
+				# or by re-executing the script
+
+				# check if the files are in the same filesystem (if not, restore the backup and continue)
+				if ! ln "$fileold" "$filenew" ; then
+					mv "$filenew$Lnbackupsuffix" "$filenew"
+					continue
+				fi
+
+				# the link is set, so the backup is not needed anymore
+				rm "$filenew$Lnbackupsuffix"
+
+				# update statistics
+				filecount=$(( filecount + 1 ))
+				filesize=$(( filesize + $(du "$filenew" | cut -f 1) ))
+			done
+			echo "$filecount fewer duplicate files, saved $filesize kilobytes"
+		)
+
+}
+
+[ $# -eq 2 ] && Ln $@

@@ -25,7 +25,8 @@
 
 Ln() {
 
-	readonly Lnbackupsuffix=.Lnbackup
+	Lnbackupsuffix=.Lnbackup
+	readonly Lnbackupsuffix
 	while [ $# -ge 2 ]; do
 		# they can be both directories or both files
 		old=$1

@@ -54,6 +54,8 @@ Ln() {
 
 					# check if they are not the same file already
 					[ $(ls -i "$filenew" | cut -f 1 -d " ") == $(ls -i "$fileold" | cut -f 1 -d " ") ] && continue
+					# check that they have the same permissions
+					[ $(ls -l "$filenew" | cut -f 1 -d " ") == $(ls -l "$fileold" | cut -f 1 -d " ") ] || continue
 					# check if they have the same contents
 					cmp -s "$filenew" "$fileold" || continue
 

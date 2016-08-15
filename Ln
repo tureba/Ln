@@ -55,7 +55,7 @@ Ln() {
 					# check if they are not the same file already
 					[ $(ls -i "$filenew" | cut -f 1 -d " ") == $(ls -i "$fileold" | cut -f 1 -d " ") ] && continue
 					# check if they have the same contents
-					diff "$filenew" "$fileold" >/dev/null || continue
+					cmp -s "$filenew" "$fileold" || continue
 
 					# since the -f flag of ln is not transactional, the next lines back up the target file to
 					# make sure we do not lose it in case the directories are in different filesystems.
